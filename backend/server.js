@@ -2,6 +2,7 @@ const http = require('http');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { initSocket } = require('./socket/socketHandler');
+const seedAdmin = require('./scripts/seedAdmin');
 
 // Load env vars
 dotenv.config({ override: true });
@@ -9,6 +10,7 @@ dotenv.config({ override: true });
 // Connect to database
 const startServer = async () => {
   await connectDB();
+  await seedAdmin();
   
   // Import the configured express app
   const app = require('./app');

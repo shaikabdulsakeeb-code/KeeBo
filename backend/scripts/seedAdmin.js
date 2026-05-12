@@ -6,15 +6,17 @@ dotenv.config({ path: '../.env' });
 
 const seedAdmin = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('MongoDB Connected for seeding...');
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(process.env.MONGO_URI);
+      console.log('MongoDB Connected for seeding...');
+    }
 
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@keebo.com';
     const adminExists = await User.findOne({ email: adminEmail });
 
     if (!adminExists) {
       await User.create({
-        name: 'System Admin',
+        name: process.env.ADMIN_NAME || 'System Admin',
         email: adminEmail,
         password: process.env.ADMIN_PASSWORD || 'admin123',
         role: 'admin',
@@ -24,11 +26,9 @@ const seedAdmin = async () => {
       console.log('Admin user already exists.');
     }
 
-    process.exit();
   } catch (error) {
     console.error('Error seeding admin user:', error.message);
-    process.exit(1);
   }
 };
 
-seedAdmin();
+module.exports = seedAdmin;
