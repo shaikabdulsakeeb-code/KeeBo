@@ -14,9 +14,11 @@ const protect = async (req, res, next) => {
 
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Decoded Token:', decoded);
 
       // Get user from the token
       req.user = await User.findById(decoded.id).select('-password');
+      console.log('User found in middleware:', req.user ? req.user._id : 'NONE');
 
       next();
     } catch (error) {

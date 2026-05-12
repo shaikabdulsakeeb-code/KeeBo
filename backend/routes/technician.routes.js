@@ -1,10 +1,17 @@
 const express = require('express');
 const router = express.Router();
+
+// Include other resource routers
+const reviewRouter = require('./review.routes');
+
+// Re-route into other resource routers
+router.use('/:technicianId/reviews', reviewRouter);
 const {
   createProfile,
   updateProfile,
   getOwnProfile,
   getApprovedTechnicians,
+  getTechniciansInRadius,
 } = require('../controllers/technician.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
@@ -17,6 +24,8 @@ const uploadFields = upload.fields([
 
 router.route('/')
   .get(getApprovedTechnicians);
+
+router.get('/radius/:lat/:lng/:distance', getTechniciansInRadius);
 
 router.route('/profile')
   .post(protect, authorize('technician'), uploadFields, createProfile)

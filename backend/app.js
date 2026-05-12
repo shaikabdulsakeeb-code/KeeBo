@@ -9,6 +9,9 @@ const authRoutes = require('./routes/auth.routes');
 const technicianRoutes = require('./routes/technician.routes');
 const userRoutes = require('./routes/user.routes');
 const adminRoutes = require('./routes/admin.routes');
+const bookingRoutes = require('./routes/booking.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const reviewRoutes = require('./routes/review.routes');
 
 const app = express();
 
@@ -22,12 +25,11 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Rate Limiting to prevent brute-force attacks
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-  message: 'Too many requests from this IP, please try again after 15 minutes',
-});
-app.use('/api/', apiLimiter);
+app.use('/api/', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000, // Increased for testing
+  message: 'Too many requests',
+}));
 
 // Base route for testing
 app.get('/', (req, res) => {
@@ -39,6 +41,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/notifications', notificationRoutes);
+// app.use('/api/reviews', reviewRoutes);
 
 // Error Handling Middlewares
 app.use(notFound);

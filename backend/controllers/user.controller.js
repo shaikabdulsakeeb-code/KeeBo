@@ -1,3 +1,4 @@
+const User = require('../models/User');
 const Review = require('../models/Review');
 const Technician = require('../models/Technician');
 const APIFeatures = require('../utils/apiFeatures');
@@ -60,7 +61,28 @@ const getTechnicianReviews = async (req, res, next) => {
   }
 };
 
+// @desc    Get current user profile
+// @route   GET /api/users/profile
+// @access  Private
+const getUserProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      res.status(200).json({
+        success: true,
+        data: user,
+      });
+    } else {
+      res.status(404);
+      return next(new Error('User not found'));
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   addReview,
   getTechnicianReviews,
+  getUserProfile,
 };

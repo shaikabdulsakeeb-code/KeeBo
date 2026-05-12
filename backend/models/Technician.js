@@ -42,15 +42,34 @@ const technicianSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending',
     },
-    rating: {
+    averageRating: {
       type: Number,
       default: 0,
       min: 0,
       max: 5,
     },
-    numReviews: {
+    totalReviews: {
       type: Number,
       default: 0,
+    },
+    idVerificationDocuments: {
+      type: [String],
+      default: [],
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+      },
+      coordinates: {
+        type: [Number],
+        index: '2dsphere',
+      },
+      address: String,
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
     },
   },
   {

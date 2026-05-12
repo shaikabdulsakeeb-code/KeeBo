@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const Technician = require('../models/Technician');
+const Booking = require('../models/Booking');
+const Review = require('../models/Review');
 const APIFeatures = require('../utils/apiFeatures');
 
 // @desc    Get all users
@@ -111,9 +113,72 @@ const updateTechnicianStatus = async (req, res, next) => {
   }
 };
 
+// @desc    Toggle Featured status of a technician
+// @route   PUT /api/admin/technicians/:id/featured
+// @access  Private (Admin only)
+const toggleFeaturedTechnician = async (req, res, next) => {
+  try {
+    const technician = await Technician.findById(req.params.id);
+
+    if (!technician) {
+      res.status(404);
+      return next(new Error('Technician not found'));
+    }
+
+    technician.isFeatured = !technician.isFeatured;
+    await technician.save();
+
+    res.status(200).json({
+      success: true,
+      data: technician,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get platform stats
+// @route   GET /api/admin/stats
+// @access  Private (Admin only)
+const getPlatformStats = async (req, res, next) => {
+  try {
+    const userCount = await User.countDocuments({ role: 'user' });
+    const proCount = await Technician.countDocuments();
+    const bookingStats = await Booking.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          revenue: { $sum: '$price' },
+        },
+      },
+    ]);
+
+    const totalRevenue = bookingStats
+      .filter((s) => s._id === 'completed')
+      .reduce((acc, curr) => acc + curr.revenue, 0);
+
+    const recentUsers = await User.find().sort('-createdAt').limit(5).select('name email createdAt');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users: { total: userCount + proCount, customers: userCount, pros: proCount },
+        bookings: bookingStats,
+        totalRevenue,
+        recentUsers,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   deleteUser,
   getAllTechniciansAdmin,
   updateTechnicianStatus,
+  toggleFeaturedTechnician,
+  getPlatformStats,
 };

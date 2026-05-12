@@ -32,6 +32,16 @@ const createProfile = async (req, res, next) => {
     let profileImageUrl = 'default.jpg';
     let workImagesUrls = [];
 
+    const { address, coordinates } = req.body;
+    let locationObj = undefined;
+    if (address && coordinates) {
+      locationObj = {
+        type: 'Point',
+        coordinates: typeof coordinates === 'string' ? JSON.parse(coordinates) : coordinates,
+        address
+      };
+    }
+
     if (req.files) {
       if (req.files.profileImage) {
         profileImageUrl = await uploadToCloudinary(
@@ -56,6 +66,7 @@ const createProfile = async (req, res, next) => {
       serviceAreas: serviceAreasArray,
       profileImage: profileImageUrl,
       workImages: workImagesUrls,
+      location: locationObj
     });
 
     res.status(201).json({
@@ -87,6 +98,15 @@ const updateProfile = async (req, res, next) => {
     if (phoneNumber) profile.phoneNumber = phoneNumber;
     if (serviceAreas) {
         profile.serviceAreas = typeof serviceAreas === 'string' ? serviceAreas.split(',').map(s => s.trim()) : serviceAreas;
+    }
+
+    const { address, coordinates } = req.body;
+    if (address && coordinates) {
+      profile.location = {
+        type: 'Point',
+        coordinates: typeof coordinates === 'string' ? JSON.parse(coordinates) : coordinates,
+        address
+      };
     }
 
     if (req.files) {
@@ -165,9 +185,35 @@ const getApprovedTechnicians = async (req, res, next) => {
   }
 };
 
+// @desc    Get technicians within a radius
+// @route   GET /api/technicians/radius/:zipcode/:distance
+// @access  Public
+const getTechniciansInRadius = async (req, res, next) => {
+  try {
+    const { lat, lng, distance } = req.params;
+
+    // Radius of Earth = 3,963 miles / 6,378 km
+    const radius = distance / 6378;
+
+    const technicians = await Technician.find({
+      location: { $geoWithin: { $centerSphere: [[lng, lat], radius] } },
+      isApproved: 'approved'
+    }).populate('userId', 'name email');
+
+    res.status(200).json({
+      success: true,
+      count: technicians.length,
+      data: technicians,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createProfile,
   updateProfile,
   getOwnProfile,
   getApprovedTechnicians,
+  getTechniciansInRadius,
 };

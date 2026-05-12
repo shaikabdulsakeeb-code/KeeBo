@@ -5,6 +5,8 @@ const {
   deleteUser,
   getAllTechniciansAdmin,
   updateTechnicianStatus,
+  toggleFeaturedTechnician,
+  getPlatformStats,
 } = require('../controllers/admin.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
@@ -24,5 +26,10 @@ router.route('/technicians')
 
 router.route('/technicians/:id/status')
   .put(updateTechnicianStatus);
+
+router.route('/technicians/:id/featured')
+  .put(toggleFeaturedTechnician);
+
+router.get('/stats', getPlatformStats);
 
 module.exports = router;
