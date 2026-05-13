@@ -23,7 +23,7 @@ const createProfile = async (req, res, next) => {
       return next(new Error('Profile already exists'));
     }
 
-    const { category, experience, pricing, serviceAreas, phoneNumber } = req.body;
+    const { category, experience, pricing, serviceAreas, phoneNumber, workingDays, workingHours } = req.body;
     let serviceAreasArray = serviceAreas;
     if (typeof serviceAreas === 'string') {
         serviceAreasArray = serviceAreas.split(',').map(s => s.trim());
@@ -66,7 +66,9 @@ const createProfile = async (req, res, next) => {
       serviceAreas: serviceAreasArray,
       profileImage: profileImageUrl,
       workImages: workImagesUrls,
-      location: locationObj
+      location: locationObj,
+      workingDays,
+      workingHours
     });
 
     res.status(201).json({
@@ -90,12 +92,14 @@ const updateProfile = async (req, res, next) => {
       return next(new Error('Profile not found'));
     }
 
-    const { category, experience, pricing, serviceAreas, phoneNumber } = req.body;
+    const { category, experience, pricing, serviceAreas, phoneNumber, workingDays, workingHours } = req.body;
     
     if (category) profile.category = category;
     if (experience) profile.experience = experience;
     if (pricing) profile.pricing = pricing;
     if (phoneNumber) profile.phoneNumber = phoneNumber;
+    if (workingDays) profile.workingDays = workingDays;
+    if (workingHours) profile.workingHours = workingHours;
     if (serviceAreas) {
         profile.serviceAreas = typeof serviceAreas === 'string' ? serviceAreas.split(',').map(s => s.trim()) : serviceAreas;
     }
@@ -210,10 +214,35 @@ const getTechniciansInRadius = async (req, res, next) => {
   }
 };
 
+// @desc    Get single technician by ID
+// @route   GET /api/technicians/:id
+// @access  Public
+const getTechnicianById = async (req, res, next) => {
+  try {
+    const technician = await Technician.findById(req.params.id).populate(
+      'userId',
+      'name email'
+    );
+
+    if (!technician) {
+      res.status(404);
+      return next(new Error('Technician not found'));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: technician,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createProfile,
   updateProfile,
   getOwnProfile,
   getApprovedTechnicians,
   getTechniciansInRadius,
+  getTechnicianById,
 };

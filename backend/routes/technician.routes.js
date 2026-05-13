@@ -12,6 +12,7 @@ const {
   getOwnProfile,
   getApprovedTechnicians,
   getTechniciansInRadius,
+  getTechnicianById,
 } = require('../controllers/technician.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
@@ -26,6 +27,8 @@ router.route('/')
   .get(getApprovedTechnicians);
 
 router.get('/radius/:lat/:lng/:distance', getTechniciansInRadius);
+
+router.get('/:id', getTechnicianById);
 
 router.route('/profile')
   .post(protect, authorize('technician'), uploadFields, createProfile)

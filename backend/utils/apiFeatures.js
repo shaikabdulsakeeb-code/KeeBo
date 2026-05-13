@@ -21,7 +21,6 @@ class APIFeatures {
         this.query = this.query.find({
             $or: [
                 { category: { $regex: searchKeyword, $options: 'i' } },
-                { 'user.name': { $regex: searchKeyword, $options: 'i' } }, // Assuming we want to search by name later
             ]
         });
     }

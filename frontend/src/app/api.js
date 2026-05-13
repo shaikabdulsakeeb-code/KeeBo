@@ -1,9 +1,10 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { API_BASE_URL } from '../lib/constants';
 
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://localhost:7700/api',
+    baseUrl: API_BASE_URL,
     prepareHeaders: (headers, { getState }) => {
       const token = getState().auth.token;
       if (token) {
@@ -12,6 +13,6 @@ export const baseApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['User', 'Technician', 'Booking', 'Notification', 'Review'],
+  tagTypes: ['User', 'Technician', 'Booking', 'Review'],
   endpoints: () => ({}),
 });

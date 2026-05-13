@@ -1,35 +1,26 @@
 const express = require('express');
-const router = express.Router();
-const {
-  getAllUsers,
+const { 
+  getStats, 
+  getTechnicians, 
+  verifyTechnician,
+  getUsers,
   deleteUser,
-  getAllTechniciansAdmin,
-  updateTechnicianStatus,
-  toggleFeaturedTechnician,
-  getPlatformStats,
+  getAllBookings
 } = require('../controllers/admin.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
 
-// Apply middleware to all routes in this file
+const router = express.Router();
+
 router.use(protect);
 router.use(authorize('admin'));
 
-router.route('/users')
-  .get(getAllUsers);
+router.get('/stats', getStats);
+router.get('/technicians', getTechnicians);
+router.put('/technicians/:id/verify', verifyTechnician);
 
-router.route('/users/:id')
-  .delete(deleteUser);
-
-router.route('/technicians')
-  .get(getAllTechniciansAdmin);
-
-router.route('/technicians/:id/status')
-  .put(updateTechnicianStatus);
-
-router.route('/technicians/:id/featured')
-  .put(toggleFeaturedTechnician);
-
-router.get('/stats', getPlatformStats);
+router.get('/users', getUsers);
+router.delete('/users/:id', deleteUser);
+router.get('/bookings', getAllBookings);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Technician = require('../models/Technician');
+const Booking = require('../models/Booking');
 const asyncHandler = require('../middleware/async.middleware');
 const ErrorResponse = require('../utils/errorResponse');
 
@@ -36,7 +37,7 @@ const updateTechnicianRating = async (technicianId) => {
 // @route   POST /api/technicians/:technicianId/reviews
 // @access  Private/User
 exports.addReview = asyncHandler(async (req, res, next) => {
-  const { rating, comment } = req.body;
+  const { rating, comment, bookingId } = req.body;
   const { technicianId } = req.params;
   const userId = req.user.id;
 
@@ -47,6 +48,17 @@ exports.addReview = asyncHandler(async (req, res, next) => {
   const technician = await Technician.findById(technicianId);
   if (!technician) {
     return next(new ErrorResponse('Technician not found', 404));
+  }
+
+  // Ensure user has a completed booking with this technician
+  const completedBooking = await Booking.findOne({
+    user: userId,
+    technician: technicianId,
+    status: 'completed'
+  });
+
+  if (!completedBooking && req.user.role !== 'admin') {
+    return next(new ErrorResponse('You can only review technicians you have completed bookings with', 403));
   }
 
   // Check if already reviewed
@@ -65,7 +77,13 @@ exports.addReview = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // Update technician rating
   await updateTechnicianRating(technicianId);
+
+  // Mark booking as reviewed if bookingId is provided
+  if (bookingId) {
+    await Booking.findByIdAndUpdate(bookingId, { isReviewed: true });
+  }
 
   res.status(201).json({
     success: true,
@@ -76,15 +94,26 @@ exports.addReview = asyncHandler(async (req, res, next) => {
 // @desc    Get reviews for a technician
 exports.getReviews = asyncHandler(async (req, res, next) => {
   const reviews = await Review.find({ technicianId: req.params.technicianId })
-    .populate('userId', 'name')
+    .populate({
+      path: 'userId',
+      select: 'name'
+    })
     .sort('-createdAt');
+
+  // Map userId to user for frontend compatibility
+  const data = reviews.map(review => {
+    const obj = review.toObject();
+    obj.user = obj.userId;
+    return obj;
+  });
 
   res.status(200).json({
     success: true,
     count: reviews.length,
-    data: reviews,
+    data: data,
   });
 });
+
 
 // @desc    Delete review
 exports.deleteReview = asyncHandler(async (req, res, next) => {

@@ -25,6 +25,14 @@ const technicianSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please add a phone number'],
     },
+    workingDays: {
+      type: [String],
+      default: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    },
+    workingHours: {
+      start: { type: String, default: '09:00' },
+      end: { type: String, default: '17:00' },
+    },
     serviceAreas: {
       type: [String],
       required: [true, 'Please specify at least one service area'],
@@ -52,10 +60,6 @@ const technicianSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    idVerificationDocuments: {
-      type: [String],
-      default: [],
-    },
     location: {
       type: {
         type: String,
@@ -66,10 +70,6 @@ const technicianSchema = new mongoose.Schema(
         index: '2dsphere',
       },
       address: String,
-    },
-    isFeatured: {
-      type: Boolean,
-      default: false,
     },
   },
   {

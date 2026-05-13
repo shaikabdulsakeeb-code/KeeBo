@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import { useRegisterMutation } from '../store/api/authApi';
-import { setCredentials } from '../store/slices/authSlice';
+import { useRegisterMutation } from '../api/authApi';
+import { setCredentials } from '../authSlice';
 import { Hammer, Loader2, User, Mail, Lock, UserCog } from 'lucide-react';
 
 const RegisterPage = () => {
@@ -26,7 +26,15 @@ const RegisterPage = () => {
     try {
       const result = await register(formData).unwrap();
       dispatch(setCredentials({ user: result.data, token: result.data.token }));
-      navigate('/');
+      
+      const role = result.data.role;
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'technician') {
+        navigate('/technician/onboarding'); // Technicians need onboarding first
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.data?.message || 'Failed to create account. Please try again.');
     }

@@ -1,9 +1,7 @@
 const http = require('http');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
-const { initSocket } = require('./socket/socketHandler');
 const seedAdmin = require('./scripts/seedAdmin');
-
 // Load env vars
 dotenv.config({ override: true });
 
@@ -17,9 +15,6 @@ const startServer = async () => {
 
   // Create HTTP server
   const server = http.createServer(app);
-
-  // Initialize Socket.IO
-  initSocket(server);
 
   const PORT = process.env.PORT || 5000;
   server.listen(PORT, () => {

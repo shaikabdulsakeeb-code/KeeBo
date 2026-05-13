@@ -33,7 +33,19 @@ const bookingSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    scheduledTime: {
+      type: String,
+      required: true,
+    },
+    userPhoneNumber: {
+      type: String,
+      required: true,
+    },
     notes: String,
+    isReviewed: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

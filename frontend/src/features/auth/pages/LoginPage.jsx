@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import { useLoginMutation } from '../store/api/authApi';
-import { setCredentials } from '../store/slices/authSlice';
+import { useLoginMutation } from '../api/authApi';
+import { setCredentials } from '../authSlice';
 import { Hammer, Loader2, Mail, Lock } from 'lucide-react';
 
 const LoginPage = () => {
@@ -22,7 +22,15 @@ const LoginPage = () => {
     try {
       const result = await login({ email, password }).unwrap();
       dispatch(setCredentials({ user: result.data, token: result.data.token }));
-      navigate('/');
+      
+      const role = result.data.role;
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'technician') {
+        navigate('/technician');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.data?.message || 'Failed to login. Please check your credentials.');
     }

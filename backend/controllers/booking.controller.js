@@ -32,7 +32,10 @@ exports.getBookings = asyncHandler(async (req, res, next) => {
     }
     query = Booking.find({ technician: technician._id }).populate('user', 'name email');
   } else {
-    query = Booking.find({ user: req.user.id }).populate('technician');
+    query = Booking.find({ user: req.user.id }).populate({
+      path: 'technician',
+      populate: { path: 'userId', select: 'name email profileImage' }
+    });
   }
 
   const bookings = await query.sort('-createdAt');
