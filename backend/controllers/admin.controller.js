@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Technician = require('../models/Technician');
 const Booking = require('../models/Booking');
+const Review = require('../models/Review');
 const SystemSettings = require('../models/SystemSettings');
 const asyncHandler = require('../middleware/async.middleware');
 const APIFeatures = require('../utils/apiFeatures');
@@ -563,4 +564,92 @@ exports.toggleSuspendTechnician = asyncHandler(async (req, res, next) => {
     message: `Technician has been ${technician.isSuspended ? 'suspended and hidden from user listings' : 'reactivated'} successfully!`,
     data: technician
   });
+});
+
+// Helper to recalculate technician rating after review deletion
+const updateTechnicianRating = async (technicianId) => {
+  const stats = await Review.aggregate([
+    { $match: { technicianId: new mongoose.Types.ObjectId(technicianId) } },
+    { $group: { _id: '$technicianId', averageRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } },
+  ]);
+  if (stats.length > 0) {
+    await Technician.findByIdAndUpdate(technicianId, {
+      averageRating: Math.round(stats[0].averageRating * 10) / 10,
+      totalReviews: stats[0].totalReviews,
+    });
+  } else {
+    await Technician.findByIdAndUpdate(technicianId, { averageRating: 0, totalReviews: 0 });
+  }
+};
+
+// @desc    Get all reviews (admin)
+// @route   GET /api/admin/reviews
+// @access  Private/Admin
+exports.getAllReviews = asyncHandler(async (req, res, next) => {
+  const search = req.query.search || '';
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+  const rating = req.query.rating || '';
+
+  const matchQuery = {};
+  if (rating) {
+    matchQuery.rating = parseInt(rating, 10);
+  }
+
+  const pipeline = [
+    { $match: matchQuery },
+    { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+    { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+    { $lookup: { from: 'technicians', localField: 'technicianId', foreignField: '_id', as: 'technician' } },
+    { $unwind: { path: '$technician', preserveNullAndEmptyArrays: true } },
+    { $lookup: { from: 'users', localField: 'technician.userId', foreignField: '_id', as: 'techUser' } },
+    { $unwind: { path: '$techUser', preserveNullAndEmptyArrays: true } },
+    ...(search ? [{
+      $match: {
+        $or: [
+          { 'user.name': { $regex: search, $options: 'i' } },
+          { 'techUser.name': { $regex: search, $options: 'i' } },
+          { comment: { $regex: search, $options: 'i' } },
+        ]
+      }
+    }] : []),
+    { $sort: { createdAt: -1 } },
+    {
+      $facet: {
+        metadata: [{ $count: 'total' }],
+        data: [{ $skip: skip }, { $limit: limit }],
+      }
+    }
+  ];
+
+  const results = await Review.aggregate(pipeline);
+  const reviews = results[0].data;
+  const totalCount = results[0].metadata[0]?.total || 0;
+
+  res.status(200).json({
+    success: true,
+    count: reviews.length,
+    totalCount,
+    totalPages: Math.ceil(totalCount / limit),
+    currentPage: page,
+    data: reviews,
+  });
+});
+
+// @desc    Delete a review (admin)
+// @route   DELETE /api/admin/reviews/:id
+// @access  Private/Admin
+exports.adminDeleteReview = asyncHandler(async (req, res, next) => {
+  const review = await Review.findById(req.params.id);
+  if (!review) {
+    res.status(404);
+    return next(new Error('Review not found'));
+  }
+
+  const technicianId = review.technicianId;
+  await review.deleteOne();
+  await updateTechnicianRating(technicianId);
+
+  res.status(200).json({ success: true, data: {} });
 });

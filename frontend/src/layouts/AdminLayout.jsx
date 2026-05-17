@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux';
 import { logout } from '../features/auth/authSlice';
 import { useState } from 'react';
 import { 
-  LayoutDashboard, ShieldCheck, LogOut, Calendar, Settings, UserCircle, Clock, AlertTriangle, Menu, X
+  LayoutDashboard, ShieldCheck, LogOut, Calendar, Settings, UserCircle, Clock, AlertTriangle, Menu, X, MessageSquare
 } from 'lucide-react';
 import { 
   useGetSettlementsQuery, 
@@ -36,6 +36,7 @@ const AdminLayout = () => {
     { label: 'Approvals', icon: <Clock className="w-5 h-5" />, path: '/admin/approvals' },
     { label: 'Users', icon: <UserCircle className="w-5 h-5" />, path: '/admin/users' },
     { label: 'All Bookings', icon: <Calendar className="w-5 h-5" />, path: '/admin/bookings' },
+    { label: 'All Reviews', icon: <MessageSquare className="w-5 h-5" />, path: '/admin/reviews' },
     { label: 'Settings', icon: <Settings className="w-5 h-5" />, path: '/admin/settings' },
   ];
 

@@ -1,4 +1,5 @@
 import { baseApi } from '../../../app/api';
+import { socket } from '../../../lib/socket';
 
 export const technicianApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,6 +29,23 @@ export const technicianApi = baseApi.injectEndpoints({
     getTechnicianReviews: builder.query({
       query: (techId) => `/technicians/${techId}/reviews`,
       providesTags: (result, error, techId) => [{ type: 'Review', id: techId }],
+      async onCacheEntryAdded(arg, { updateCachedData, cacheDataLoaded, cacheEntryRemoved }) {
+        try {
+          await cacheDataLoaded;
+          const handleNewReview = (review) => {
+            updateCachedData((draft) => {
+              if (draft && draft.data) {
+                draft.data.unshift(review);
+                draft.count = (draft.count || 0) + 1;
+              }
+            });
+          };
+
+          socket.on('newReview', handleNewReview);
+          await cacheEntryRemoved;
+          socket.off('newReview', handleNewReview);
+        } catch {}
+      },
     }),
     addReview: builder.mutation({
       query: ({ techId, ...reviewData }) => ({

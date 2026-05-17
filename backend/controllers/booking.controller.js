@@ -11,9 +11,29 @@ exports.createBooking = asyncHandler(async (req, res, next) => {
   
   const booking = await bookingService.createBooking(req.body);
 
+  const populatedBooking = await Booking.findById(booking._id)
+    .populate('user', 'name email profileImage')
+    .populate({
+      path: 'technician',
+      populate: { path: 'userId', select: 'name email profileImage' }
+    });
+
+  // Emit Real-Time Events
+  const io = req.app.get('io');
+  if (io && populatedBooking) {
+    const Technician = require('../models/Technician');
+    const tech = await Technician.findById(booking.technician);
+    if (tech) {
+      // Notify technician
+      io.to(tech.userId.toString()).emit('newBooking', populatedBooking.toJSON());
+    }
+    // Notify admins
+    io.to('admin_room').emit('bookingCreated', populatedBooking.toJSON());
+  }
+
   res.status(201).json({
     success: true,
-    data: booking,
+    data: populatedBooking,
   });
 });
 
@@ -78,8 +98,32 @@ exports.updateStatus = asyncHandler(async (req, res, next) => {
      await Technician.findByIdAndUpdate(booking.technician, { $inc: { jobsDone: 1 } });
   }
 
+  const populatedBooking = await Booking.findById(bookingId)
+    .populate('user', 'name email profileImage')
+    .populate({
+      path: 'technician',
+      populate: { path: 'userId', select: 'name email profileImage' }
+    });
+
+  // Emit Real-Time Events
+  const io = req.app.get('io');
+  if (io && populatedBooking) {
+    // Notify the user who made the booking
+    io.to(booking.user.toString()).emit('bookingUpdated', populatedBooking.toJSON());
+    
+    // Notify the technician
+    const Technician = require('../models/Technician');
+    const tech = await Technician.findById(booking.technician);
+    if (tech) {
+      io.to(tech.userId.toString()).emit('bookingUpdated', populatedBooking.toJSON());
+    }
+    
+    // Notify admins
+    io.to('admin_room').emit('bookingUpdated', populatedBooking.toJSON());
+  }
+
   res.status(200).json({
     success: true,
-    data: booking,
+    data: populatedBooking,
   });
 });

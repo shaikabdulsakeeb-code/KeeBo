@@ -37,6 +37,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: 'default.jpg',
     },
+    resetOtp: {
+      type: String,
+      select: false,
+    },
+    resetOtpExpire: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,

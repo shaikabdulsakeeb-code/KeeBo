@@ -14,7 +14,9 @@ const {
   updateSettings,
   getSettlements,
   verifySettlement,
-  toggleSuspendTechnician
+  toggleSuspendTechnician,
+  getAllReviews,
+  adminDeleteReview
 } = require('../controllers/admin.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
@@ -42,5 +44,8 @@ router.put('/settings', updateSettings);
 
 router.get('/settlements', getSettlements);
 router.put('/settlements/:id', verifySettlement);
+
+router.get('/reviews', getAllReviews);
+router.delete('/reviews/:id', adminDeleteReview);
 
 module.exports = router;

@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../features/auth/pages/LoginPage';
 import RegisterPage from '../features/auth/pages/RegisterPage';
+import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage';
 import SearchTechnicians from '../features/technicians/pages/SearchTechnicians';
 import NotFound from '../pages/NotFound';
 import Unauthorized from '../pages/Unauthorized';
@@ -26,6 +27,7 @@ import AdminUsers from '../features/admin/pages/AdminUsers';
 import AdminBookings from '../features/admin/pages/AdminBookings';
 import AdminSettings from '../features/admin/pages/AdminSettings';
 import AccountSettings from '../pages/AccountSettings';
+import AdminReviews from '../features/admin/pages/AdminReviews';
 import TechnicianBookings from '../features/technicians/pages/TechnicianBookings';
 import TechnicianReviews from '../features/technicians/pages/TechnicianReviews';
 import AboutUs from '../pages/AboutUs';
@@ -38,6 +40,7 @@ export default function AppRoutes() {
       <Route path="/" element={<NonAdminRoute><LandingPage /></NonAdminRoute>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/about" element={<NonAdminRoute><AboutUs /></NonAdminRoute>} />
       <Route path="/contact" element={<NonAdminRoute><ContactUs /></NonAdminRoute>} />
       <Route path="/unauthorized" element={<Unauthorized />} />
@@ -119,6 +122,7 @@ export default function AppRoutes() {
         <Route path="approvals/:id" element={<AdminApprovalReview />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="bookings" element={<AdminBookings />} />
+        <Route path="reviews" element={<AdminReviews />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 

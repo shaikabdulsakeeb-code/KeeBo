@@ -41,13 +41,13 @@ exports.loginUser = async (email, password) => {
   const user = await User.findOne({ email }).select('+password');
 
   if (!user) {
-    throw new ErrorResponse('Invalid credentials', 401);
+    throw new ErrorResponse('USER_NOT_FOUND', 401);
   }
 
   const isMatch = await user.matchPassword(password);
 
   if (!isMatch) {
-    throw new ErrorResponse('Invalid credentials', 401);
+    throw new ErrorResponse('INVALID_PASSWORD', 401);
   }
 
   return {
