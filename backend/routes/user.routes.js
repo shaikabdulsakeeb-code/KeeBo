@@ -4,17 +4,16 @@ const {
   getUserProfile, 
   addFavorite, 
   removeFavorite, 
-  getFavorites 
+  getFavorites,
+  updateProfileImage
 } = require('../controllers/user.controller');
 const { protect } = require('../middleware/auth.middleware');
+const upload = require('../middleware/upload.middleware');
 
-router.route('/profile').get(protect, getUserProfile);
-
-router.route('/favorites')
-  .get(protect, getFavorites);
-
-router.route('/favorites/:technicianId')
-  .post(protect, addFavorite)
-  .delete(protect, removeFavorite);
+router.get('/profile', protect, getUserProfile);
+router.put('/profile/image', protect, upload.single('profileImage'), updateProfileImage);
+router.get('/favorites', protect, getFavorites);
+router.post('/favorites/:technicianId', protect, addFavorite);
+router.delete('/favorites/:technicianId', protect, removeFavorite);
 
 module.exports = router;

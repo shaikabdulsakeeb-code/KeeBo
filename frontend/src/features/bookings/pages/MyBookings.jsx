@@ -1,17 +1,101 @@
 import { useState } from 'react';
-import { useGetBookingsQuery } from '../api/bookingApi';
+import { useGetBookingsQuery, useUpdateBookingStatusMutation } from '../api/bookingApi';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Clock, CheckCircle2, XCircle, AlertCircle, PhoneCall } from 'lucide-react';
+import { Calendar, MapPin, Clock, CheckCircle2, XCircle, AlertCircle, PhoneCall, Ban } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Link } from 'react-router-dom';
 import ReviewModal from '../../../components/modals/ReviewModal';
+import { toast } from 'react-hot-toast';
+import { AnimatePresence } from 'framer-motion';
+
+const formatRelativeTime = (date) => {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - new Date(date)) / 1000);
+  if (diffInSeconds < 60) return 'just now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
+  return new Date(date).toLocaleDateString();
+};
+
+const CancelModal = ({ isOpen, onClose, onConfirm, isLoading }) => (
+  <AnimatePresence>
+    {isOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="bg-card border border-white/10 rounded-[2.5rem] p-10 max-w-sm w-full space-y-8 shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-red-500 to-orange-500"></div>
+          <div className="w-20 h-20 rounded-[2rem] bg-orange-500/10 text-orange-500 flex items-center justify-center mx-auto shadow-inner">
+            <Ban className="w-10 h-10" />
+          </div>
+          <div className="text-center space-y-3">
+            <h3 className="text-2xl font-black tracking-tight">Cancel Service?</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed font-medium">
+              Are you sure you want to cancel this booking? This action will notify the technician immediately.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Button 
+              className="h-14 rounded-2xl font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-xl shadow-orange-500/20" 
+              onClick={onConfirm}
+              isLoading={isLoading}
+            >
+              Yes, Cancel Booking
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="h-14 rounded-2xl font-bold text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all" 
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Go Back
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+);
 
 const MyBookings = () => {
   const { data: bookingsResponse, isLoading } = useGetBookingsQuery();
+  const [updateStatus, { isLoading: isUpdating }] = useUpdateBookingStatusMutation();
   const bookings = bookingsResponse?.data || [];
   const [reviewTarget, setReviewTarget] = useState(null);
+  const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null });
+
+  const handleCancel = (id) => {
+    setCancelModal({ isOpen: true, bookingId: id });
+  };
+
+  const handleConfirmCancel = async () => {
+    try {
+      await updateStatus({ id: cancelModal.bookingId, status: 'cancelled' }).unwrap();
+      toast.success('Booking cancelled successfully');
+      setCancelModal({ isOpen: false, bookingId: null });
+    } catch (err) {
+      toast.error(err.data?.message || 'Failed to cancel booking');
+    }
+  };
 
   const openReviewModal = (booking) => {
+    if (!booking.technician?._id) {
+      return console.error('Technician ID missing in booking:', booking);
+    }
     setReviewTarget({
       technicianId: booking.technician?._id,
       technicianName: booking.technician?.userId?.name,
@@ -31,6 +115,13 @@ const MyBookings = () => {
 
   return (
     <div className="space-y-8 pb-10">
+      <CancelModal 
+        isOpen={cancelModal.isOpen}
+        onClose={() => setCancelModal({ isOpen: false, bookingId: null })}
+        onConfirm={handleConfirmCancel}
+        isLoading={isUpdating}
+      />
+
       <div>
         <h1 className="text-3xl font-bold">My Bookings</h1>
         <p className="text-muted-foreground">Track and manage your service requests.</p>
@@ -68,7 +159,12 @@ const MyBookings = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${getStatusColor(booking.status)}`}>
-                      {booking.status}
+                      {booking.status === 'cancelled' ? (
+                        booking.cancelledBy === 'admin' ? 'System Cancelled' :
+                        booking.cancelledBy === 'user' ? 'Cancelled by You' :
+                        booking.cancelledBy === 'technician' ? 'Cancelled by Technician' :
+                        'Cancelled'
+                      ) : booking.status}
                     </span>
                     <span className="text-xs text-muted-foreground font-medium">Ref: #{booking._id.slice(-6)}</span>
                   </div>
@@ -81,23 +177,44 @@ const MyBookings = () => {
                     <div className="flex items-center"><Clock className="w-4 h-4 mr-2 text-primary" /> {booking.scheduledTime || 'N/A'}</div>
                     <div className="flex items-center sm:col-span-2"><MapPin className="w-4 h-4 mr-2 text-primary" /> {booking.address}</div>
                   </div>
+                  <p className="text-[10px] font-bold text-muted-foreground mt-4 uppercase tracking-widest bg-muted/30 w-fit px-3 py-1 rounded-full">
+                    Booked {formatRelativeTime(booking.createdAt)}
+                  </p>
+                  {booking.status === 'cancelled' && booking.cancelledAt && (
+                    <p className="text-[10px] font-bold text-rose-500 mt-2 uppercase tracking-widest bg-rose-500/10 w-fit px-3 py-1 rounded-full">
+                      {booking.cancelledBy === 'admin' ? 'System Cancelled' :
+                       booking.cancelledBy === 'user' ? 'Cancelled by You' :
+                       booking.cancelledBy === 'technician' ? 'Cancelled by Technician' :
+                       'Cancelled'} {formatRelativeTime(booking.cancelledAt)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col justify-between items-end gap-4 min-w-[150px]">
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground mb-1">Service Fee</p>
-                    <p className="text-2xl font-bold">${booking.price}</p>
+                    <p className="text-2xl font-bold">₹{booking.price}</p>
                   </div>
                   
-                  <div className="flex gap-2 w-full md:w-auto">
-                    {booking.status === 'accepted' && (
-                      <a href={`tel:${booking.technician?.phoneNumber}`} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full rounded-xl border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700">
-                          <PhoneCall className="w-4 h-4 mr-2" /> Call
+                  <div className="flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
+                    {(booking.status === 'accepted' || booking.status === 'pending') && (
+                      <>
+                        <a href={`tel:${booking.technician?.phoneNumber || '1234567890'}`} className="flex-1 md:flex-none">
+                          <Button variant="outline" size="sm" className="w-full rounded-xl border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700 shadow-sm font-bold">
+                            <PhoneCall className="w-4 h-4 mr-2" /> Call
+                          </Button>
+                        </a>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex-1 md:flex-none rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 font-bold"
+                          onClick={() => handleCancel(booking._id)}
+                          isLoading={isUpdating}
+                        >
+                          <Ban className="w-4 h-4 mr-2" /> Cancel
                         </Button>
-                      </a>
+                      </>
                     )}
-                    <Button size="sm" className="flex-1 rounded-xl">Details</Button>
                   </div>
                 </div>
               </div>
@@ -119,13 +236,15 @@ const MyBookings = () => {
         </div>
       )}
 
-      <ReviewModal 
-        isOpen={!!reviewTarget}
-        onClose={() => setReviewTarget(null)}
-        technicianId={reviewTarget?.technicianId}
-        technicianName={reviewTarget?.technicianName}
-        bookingId={reviewTarget?.bookingId}
-      />
+      {reviewTarget && (
+        <ReviewModal 
+          isOpen={!!reviewTarget}
+          onClose={() => setReviewTarget(null)}
+          technicianId={reviewTarget.technicianId}
+          technicianName={reviewTarget.technicianName}
+          bookingId={reviewTarget.bookingId}
+        />
+      )}
     </div>
   );
 };

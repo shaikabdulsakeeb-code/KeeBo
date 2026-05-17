@@ -32,6 +32,7 @@ exports.registerUser = async (userData) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    profileImage: user.profileImage,
     token: generateToken(user._id),
   };
 };
@@ -54,6 +55,7 @@ exports.loginUser = async (email, password) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    profileImage: user.profileImage,
     token: generateToken(user._id),
   };
 };

@@ -33,16 +33,41 @@ const userSchema = new mongoose.Schema(
         ref: 'Technician',
       },
     ],
+    profileImage: {
+      type: String,
+      default: 'default.jpg',
+    },
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: (doc, ret) => {
+        if (ret.role === 'technician') {
+          delete ret.favorites;
+        }
+        return ret;
+      },
+    },
+    toObject: {
+      transform: (doc, ret) => {
+        if (ret.role === 'technician') {
+          delete ret.favorites;
+        }
+        return ret;
+      },
+    },
   }
 );
 
 // Encrypt password using bcrypt before saving
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
+  // Clear favorites if role is technician
+  if (this.role === 'technician') {
+    this.favorites = undefined;
+  }
+
   if (!this.isModified('password')) {
-    next();
+    return;
   }
 
   const salt = await bcrypt.genSalt(10);

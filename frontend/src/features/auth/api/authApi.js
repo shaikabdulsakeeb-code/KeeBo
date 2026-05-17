@@ -20,6 +20,10 @@ export const authApi = baseApi.injectEndpoints({
       query: () => '/users/profile',
       providesTags: ['User'],
     }),
+    getPublicSettings: builder.query({
+      query: () => '/auth/settings',
+      providesTags: ['PublicSettings'],
+    }),
   }),
 });
 
@@ -27,4 +31,5 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useGetProfileQuery,
+  useGetPublicSettingsQuery,
 } = authApi;

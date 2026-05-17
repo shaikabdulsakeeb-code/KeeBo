@@ -14,6 +14,7 @@ const ReviewModal = ({ isOpen, onClose, technicianId, bookingId, technicianName 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (rating === 0) return toast.error('Please select a rating');
+    if (!technicianId) return toast.error('Technician information is missing. Please refresh and try again.');
 
     try {
       await addReview({
@@ -24,6 +25,8 @@ const ReviewModal = ({ isOpen, onClose, technicianId, bookingId, technicianName 
       }).unwrap();
       
       toast.success('Thank you for your feedback!');
+      setRating(0);
+      setComment('');
       onClose();
     } catch (err) {
       toast.error(err.data?.message || 'Failed to submit review');

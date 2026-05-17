@@ -12,6 +12,11 @@ const technicianSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please add a category (e.g., plumber, electrician)'],
     },
+    bio: {
+      type: String,
+      trim: true,
+      maxLength: [500, 'Bio cannot be more than 500 characters'],
+    },
     experience: {
       type: Number,
       required: [true, 'Please specify years of experience'],
@@ -45,10 +50,17 @@ const technicianSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    idVerification: {
+      type: String,
+    },
     isApproved: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending',
+    },
+    rejectionReason: {
+      type: String,
+      default: '',
     },
     averageRating: {
       type: Number,
@@ -59,6 +71,39 @@ const technicianSchema = new mongoose.Schema(
     totalReviews: {
       type: Number,
       default: 0,
+    },
+    jobsDone: {
+      type: Number,
+      default: 0,
+    },
+    outstandingDues: {
+      type: Number,
+      default: 0,
+    },
+    totalEarnings: {
+      type: Number,
+      default: 0,
+    },
+    lastPaymentDate: {
+      type: Date,
+      default: Date.now,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['clear', 'due', 'overdue'],
+      default: 'clear',
+    },
+    isSettlementPending: {
+      type: Boolean,
+      default: false,
+    },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    suspensionReason: {
+      type: String,
+      default: '',
     },
     location: {
       type: {

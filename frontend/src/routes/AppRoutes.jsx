@@ -7,6 +7,7 @@ import NotFound from '../pages/NotFound';
 import Unauthorized from '../pages/Unauthorized';
 import ProtectedRoute from './ProtectedRoute';
 import RoleBasedRoute from './RoleBasedRoute';
+import NonAdminRoute from './NonAdminRoute';
 import UserLayout from '../layouts/UserLayout';
 import UserDashboard from '../features/profile/pages/UserDashboard';
 import Favorites from '../features/profile/pages/Favorites';
@@ -17,20 +18,43 @@ import TechnicianOnboarding from '../features/technicians/pages/TechnicianOnboar
 import TechnicianProfile from '../features/technicians/pages/TechnicianProfile';
 import AdminLayout from '../layouts/AdminLayout';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
+import AdminTechnicians from '../features/admin/pages/AdminTechnicians';
+import AdminTechnicianDetail from '../features/admin/pages/AdminTechnicianDetail';
+import AdminApprovals from '../features/admin/pages/AdminApprovals';
+import AdminApprovalReview from '../features/admin/pages/AdminApprovalReview';
+import AdminUsers from '../features/admin/pages/AdminUsers';
+import AdminBookings from '../features/admin/pages/AdminBookings';
+import AdminSettings from '../features/admin/pages/AdminSettings';
 import AccountSettings from '../pages/AccountSettings';
 import TechnicianBookings from '../features/technicians/pages/TechnicianBookings';
+import TechnicianReviews from '../features/technicians/pages/TechnicianReviews';
+import AboutUs from '../pages/AboutUs';
+import ContactUs from '../pages/ContactUs';
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<LandingPage />} />
+      {/* Public Routes - Restricted for Admin */}
+      <Route path="/" element={<NonAdminRoute><LandingPage /></NonAdminRoute>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/about" element={<NonAdminRoute><AboutUs /></NonAdminRoute>} />
+      <Route path="/contact" element={<NonAdminRoute><ContactUs /></NonAdminRoute>} />
       <Route path="/unauthorized" element={<Unauthorized />} />
 
-      <Route path="/technician/:id" element={<TechnicianProfile />} />
-      <Route path="/technicians" element={<SearchTechnicians />} />
+      <Route path="/technician/:id" element={<NonAdminRoute><TechnicianProfile /></NonAdminRoute>} />
+      <Route 
+        path="/technicians" 
+        element={
+          <ProtectedRoute>
+            <NonAdminRoute>
+              <RoleBasedRoute allowedRoles={['user']}>
+                <SearchTechnicians />
+              </RoleBasedRoute>
+            </NonAdminRoute>
+          </ProtectedRoute>
+        } 
+      />
 
       {/* Protected Customer Routes */}
       <Route 
@@ -46,7 +70,6 @@ export default function AppRoutes() {
         <Route index element={<UserDashboard />} />
         <Route path="bookings" element={<MyBookings />} />
         <Route path="favorites" element={<Favorites />} />
-        <Route path="settings" element={<AccountSettings />} />
       </Route>
 
       {/* Protected Technician Routes */}
@@ -62,9 +85,21 @@ export default function AppRoutes() {
       >
         <Route index element={<TechnicianDashboard />} />
         <Route path="bookings" element={<TechnicianBookings />} />
-        <Route path="onboarding" element={<TechnicianOnboarding />} />
+        <Route path="reviews" element={<TechnicianReviews />} />
         <Route path="settings" element={<AccountSettings />} />
+        <Route path="profile-management" element={<TechnicianOnboarding />} />
       </Route>
+
+      <Route 
+        path="/technician/onboarding" 
+        element={
+          <ProtectedRoute>
+            <RoleBasedRoute allowedRoles={['technician']}>
+              <TechnicianOnboarding />
+            </RoleBasedRoute>
+          </ProtectedRoute>
+        } 
+      />
 
       {/* Protected Admin Routes */}
       <Route 
@@ -78,6 +113,13 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<AdminDashboard />} />
+        <Route path="technicians" element={<AdminTechnicians />} />
+        <Route path="technicians/:id" element={<AdminTechnicianDetail />} />
+        <Route path="approvals" element={<AdminApprovals />} />
+        <Route path="approvals/:id" element={<AdminApprovalReview />} />
+        <Route path="users" element={<AdminUsers />} />
+        <Route path="bookings" element={<AdminBookings />} />
+        <Route path="settings" element={<AdminSettings />} />
       </Route>
 
       {/* Fallback */}

@@ -4,15 +4,17 @@ import { useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
 import { useRegisterMutation } from '../api/authApi';
 import { setCredentials } from '../authSlice';
-import { Hammer, Loader2, User, Mail, Lock, UserCog } from 'lucide-react';
+import { Hammer, Loader2, User, Mail, Lock, UserCog, Eye, EyeOff } from 'lucide-react';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     role: 'user',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
@@ -23,8 +25,15 @@ const RegisterPage = () => {
     e.preventDefault();
     setError('');
 
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     try {
-      const result = await register(formData).unwrap();
+      // Create a submission object without confirmPassword
+      const { confirmPassword, ...submissionData } = formData;
+      const result = await register(submissionData).unwrap();
       dispatch(setCredentials({ user: result.data, token: result.data.token }));
       
       const role = result.data.role;
@@ -62,8 +71,8 @@ const RegisterPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+          {error && error !== 'Passwords do not match' && (
+            <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
               {error}
             </div>
           )}
@@ -129,15 +138,42 @@ const RegisterPage = () => {
               <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <input
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 minLength={6}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-10 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-10 pr-10 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Confirm Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <input
+                name="confirmPassword"
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
+                className={`flex h-10 w-full rounded-md border ${error === 'Passwords do not match' ? 'border-red-600' : 'border-input'} bg-background px-10 pr-10 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+                placeholder="••••••••"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+              />
+            </div>
+            {error === 'Passwords do not match' && (
+              <p className="text-[10px] font-black text-red-600 uppercase tracking-widest ml-1">Passwords do not match</p>
+            )}
           </div>
 
           <button

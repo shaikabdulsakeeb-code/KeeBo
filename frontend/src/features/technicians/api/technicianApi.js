@@ -14,8 +14,8 @@ export const technicianApi = baseApi.injectEndpoints({
       providesTags: (result, error, id) => [{ type: 'Technician', id }],
     }),
     getOwnProfile: builder.query({
-      query: () => '/technicians/profile',
-      providesTags: ['Technician'],
+      query: (userId) => '/technicians/profile',
+      providesTags: (result, error, userId) => [{ type: 'Technician', id: userId || 'OWN' }],
     }),
     updateTechnicianAvailability: builder.mutation({
       query: (isAvailable) => ({
@@ -45,6 +45,26 @@ export const technicianApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Technician'],
     }),
+    updateProfile: builder.mutation({
+      query: (profileData) => ({
+        url: '/technicians/profile',
+        method: 'PUT',
+        body: profileData,
+      }),
+      invalidatesTags: ['Technician'],
+    }),
+    payDues: builder.mutation({
+      query: (paymentData) => ({
+        url: '/technicians/pay-dues',
+        method: 'POST',
+        body: paymentData,
+      }),
+      invalidatesTags: ['Technician', 'Booking'],
+    }),
+    getServiceStats: builder.query({
+      query: () => '/technicians/stats/services',
+      providesTags: ['Technician'],
+    }),
   }),
 });
 
@@ -56,4 +76,7 @@ export const {
   useGetTechnicianReviewsQuery,
   useAddReviewMutation,
   useCreateProfileMutation,
+  useUpdateProfileMutation,
+  useGetServiceStatsQuery,
+  usePayDuesMutation,
 } = technicianApi;

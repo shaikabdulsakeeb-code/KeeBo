@@ -2,10 +2,19 @@ const express = require('express');
 const { 
   getStats, 
   getTechnicians, 
+  getAdminTechnicianById,
   verifyTechnician,
+  deleteTechnician,
   getUsers,
   deleteUser,
-  getAllBookings
+  getAllBookings,
+  updateAdminBookingStatus,
+  deleteBooking,
+  getSettings,
+  updateSettings,
+  getSettlements,
+  verifySettlement,
+  toggleSuspendTechnician
 } = require('../controllers/admin.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
@@ -17,10 +26,21 @@ router.use(authorize('admin'));
 
 router.get('/stats', getStats);
 router.get('/technicians', getTechnicians);
+router.get('/technicians/:id', getAdminTechnicianById);
 router.put('/technicians/:id/verify', verifyTechnician);
+router.put('/technicians/:id/suspend', toggleSuspendTechnician);
+router.delete('/technicians/:id', deleteTechnician);
 
 router.get('/users', getUsers);
 router.delete('/users/:id', deleteUser);
 router.get('/bookings', getAllBookings);
+router.put('/bookings/:id/status', updateAdminBookingStatus);
+router.delete('/bookings/:id', deleteBooking);
+
+router.get('/settings', getSettings);
+router.put('/settings', updateSettings);
+
+router.get('/settlements', getSettlements);
+router.put('/settlements/:id', verifySettlement);
 
 module.exports = router;

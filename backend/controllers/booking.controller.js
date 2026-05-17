@@ -54,13 +54,29 @@ exports.updateStatus = asyncHandler(async (req, res, next) => {
   const { status } = req.body;
   const bookingId = req.params.id;
 
-  // Validation
   const allowedStatuses = ['accepted', 'rejected', 'completed', 'cancelled'];
   if (!allowedStatuses.includes(status)) {
     return next(new ErrorResponse('Invalid status', 400));
   }
 
-  const booking = await bookingService.updateBookingStatus(bookingId, status, req.user.id);
+  const booking = await Booking.findById(bookingId);
+  if (!booking) {
+    return next(new ErrorResponse('Booking not found', 404));
+  }
+
+  booking.status = status;
+  if (status === 'cancelled') {
+    booking.cancelledBy = req.user.role === 'admin' ? 'admin' : (req.user.role === 'technician' ? 'technician' : 'user');
+    booking.cancelledAt = new Date();
+  }
+
+  await booking.save();
+
+  // If status is completed, increment jobs done
+  if (status === 'completed') {
+     const Technician = require('../models/Technician');
+     await Technician.findByIdAndUpdate(booking.technician, { $inc: { jobsDone: 1 } });
+  }
 
   res.status(200).json({
     success: true,

@@ -41,8 +41,8 @@ exports.addReview = asyncHandler(async (req, res, next) => {
   const { technicianId } = req.params;
   const userId = req.user.id;
 
-  if (!technicianId || !userId) {
-    return next(new ErrorResponse('Technician ID or User ID missing', 400));
+  if (!technicianId) {
+    return next(new ErrorResponse('Technician ID is required', 400));
   }
 
   const technician = await Technician.findById(technicianId);
@@ -51,17 +51,25 @@ exports.addReview = asyncHandler(async (req, res, next) => {
   }
 
   // Ensure user has a completed booking with this technician
-  const completedBooking = await Booking.findOne({
+  // We check for any completed booking if bookingId is not provided, 
+  // or the specific booking if it is provided.
+  const bookingCriteria = {
     user: userId,
     technician: technicianId,
     status: 'completed'
-  });
-
-  if (!completedBooking && req.user.role !== 'admin') {
-    return next(new ErrorResponse('You can only review technicians you have completed bookings with', 403));
+  };
+  
+  if (bookingId && mongoose.Types.ObjectId.isValid(bookingId)) {
+    bookingCriteria._id = bookingId;
   }
 
-  // Check if already reviewed
+  const completedBooking = await Booking.findOne(bookingCriteria);
+
+  if (!completedBooking && req.user.role !== 'admin') {
+    return next(new ErrorResponse('You can only review technicians after a completed service', 403));
+  }
+
+  // Check if already reviewed this technician
   let review = await Review.findOne({ userId, technicianId });
 
   if (review) {
@@ -80,9 +88,13 @@ exports.addReview = asyncHandler(async (req, res, next) => {
   // Update technician rating
   await updateTechnicianRating(technicianId);
 
-  // Mark booking as reviewed if bookingId is provided
-  if (bookingId) {
+  // Mark specific booking as reviewed if provided
+  if (bookingId && mongoose.Types.ObjectId.isValid(bookingId)) {
     await Booking.findByIdAndUpdate(bookingId, { isReviewed: true });
+  } else if (completedBooking) {
+    // If we found a completed booking but no bookingId was sent, mark that one as reviewed
+    completedBooking.isReviewed = true;
+    await completedBooking.save();
   }
 
   res.status(201).json({

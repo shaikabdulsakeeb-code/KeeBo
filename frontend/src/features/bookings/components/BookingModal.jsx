@@ -24,6 +24,25 @@ const BookingModal = ({ isOpen, onClose, technician }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate availability
+    const selectedDate = new Date(formData.scheduledDate);
+    const dayNamesShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const selectedDayShort = dayNamesShort[selectedDate.getDay()];
+    const selectedDayFull = dayNamesFull[selectedDate.getDay()];
+
+    if (!technician.workingDays.includes(selectedDayShort) && !technician.workingDays.includes(selectedDayFull)) {
+      return toast.error(`Professional is not available on ${selectedDayFull}`);
+    }
+
+    if (formData.scheduledTime) {
+      const { start, end } = technician.workingHours;
+      if (formData.scheduledTime < start || formData.scheduledTime > end) {
+        return toast.error(`Professional is only available between ${start} and ${end}`);
+      }
+    }
+
     try {
       await createBooking({
         technician: technician._id,

@@ -21,6 +21,8 @@ class APIFeatures {
         this.query = this.query.find({
             $or: [
                 { category: { $regex: searchKeyword, $options: 'i' } },
+                { 'location.address': { $regex: searchKeyword, $options: 'i' } },
+                { address: { $regex: searchKeyword, $options: 'i' } }
             ]
         });
     }
