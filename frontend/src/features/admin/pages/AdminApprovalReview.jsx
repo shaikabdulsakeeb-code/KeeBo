@@ -123,7 +123,7 @@ const AdminApprovalReview = () => {
                     <MapPin className="w-4 h-4" />
                     <span className="text-[10px] font-black uppercase">Base Location</span>
                   </div>
-                  <p className="font-bold text-sm leading-relaxed">{tech.address || 'Address not provided'}</p>
+                  <p className="font-bold text-sm leading-relaxed">{tech.location?.address || 'Address not provided'}</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl border shadow-sm space-y-2 md:col-span-2">

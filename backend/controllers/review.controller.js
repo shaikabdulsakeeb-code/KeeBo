@@ -103,17 +103,48 @@ exports.addReview = asyncHandler(async (req, res, next) => {
     await completedBooking.save();
   }
 
-  // Emit real-time event for the new review
+  // Emit real-time event for the new review with full populations for frontend compatibility
   const io = req.app.get('io');
   if (io) {
-    // Notify the technician
-    const Technician = require('../models/Technician');
-    const techDoc = await Technician.findById(technicianId);
-    if (techDoc) {
-      io.to(techDoc.userId.toString()).emit('newReview', review);
+    try {
+      const populatedReview = await Review.findById(review._id)
+        .populate({
+          path: 'userId',
+          select: 'name email'
+        });
+
+      if (populatedReview) {
+        const reviewObj = populatedReview.toObject();
+        reviewObj.user = reviewObj.userId; // Map for frontend query structure
+
+        const tech = await Technician.findById(technicianId)
+          .populate({
+            path: 'userId',
+            select: 'name'
+          });
+
+        if (tech) {
+          reviewObj.technician = {
+            _id: tech._id,
+            category: tech.category,
+            userId: tech.userId?._id
+          };
+          reviewObj.techUser = tech.userId ? {
+            _id: tech.userId._id,
+            name: tech.userId.name
+          } : null;
+        }
+
+        // Notify the technician
+        if (tech && tech.userId) {
+          io.to(tech.userId._id.toString()).emit('newReview', reviewObj);
+        }
+        // Notify admins
+        io.to('admin_room').emit('newReview', reviewObj);
+      }
+    } catch (err) {
+      console.error('Error emitting newReview socket event:', err);
     }
-    // Notify admins
-    io.to('admin_room').emit('newReview', review);
   }
 
   res.status(201).json({

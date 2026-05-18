@@ -53,7 +53,7 @@ const TechnicianOnboarding = () => {
     navigate('/login');
   };
   
-  const { data: profileData, isLoading: isProfileLoading } = useGetOwnProfileQuery(user?._id);
+  const { data: profileData, isLoading: isProfileLoading } = useGetOwnProfileQuery();
   const existingProfile = profileData?.data;
 
   // Monitor browser back/close

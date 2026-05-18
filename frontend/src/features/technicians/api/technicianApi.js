@@ -9,14 +9,128 @@ export const technicianApi = baseApi.injectEndpoints({
         params,
       }),
       providesTags: ['Technician'],
+      async onCacheEntryAdded(arg, { updateCachedData, cacheDataLoaded, cacheEntryRemoved }) {
+        try {
+          await cacheDataLoaded;
+          
+          const handleCreated = (technician) => {
+            updateCachedData((draft) => {
+              if (draft && draft.data) {
+                const isMatch = (!arg?.isApproved || arg.isApproved === technician.isApproved) &&
+                                (!arg?.category || arg.category === technician.category);
+                
+                const index = draft.data.findIndex((t) => t._id === technician._id);
+                if (index === -1 && isMatch) {
+                  draft.data.unshift(technician);
+                  if (draft.count !== undefined) draft.count += 1;
+                  if (draft.totalCount !== undefined) draft.totalCount += 1;
+                }
+              }
+            });
+          };
+
+          const handleUpdated = (technician) => {
+            updateCachedData((draft) => {
+              if (draft && draft.data) {
+                const isMatch = (!arg?.isApproved || arg.isApproved === technician.isApproved) &&
+                                (!arg?.category || arg.category === technician.category) &&
+                                !technician.isSuspended;
+                
+                const index = draft.data.findIndex((t) => t._id === technician._id);
+                if (index !== -1) {
+                  if (isMatch) {
+                    draft.data[index] = technician;
+                  } else {
+                    draft.data.splice(index, 1);
+                    if (draft.count !== undefined) draft.count = Math.max(0, draft.count - 1);
+                    if (draft.totalCount !== undefined) draft.totalCount = Math.max(0, draft.totalCount - 1);
+                  }
+                } else if (isMatch) {
+                  draft.data.unshift(technician);
+                  if (draft.count !== undefined) draft.count += 1;
+                  if (draft.totalCount !== undefined) draft.totalCount += 1;
+                }
+              }
+            });
+          };
+
+          const handleDeleted = (techId) => {
+            updateCachedData((draft) => {
+              if (draft && draft.data) {
+                const index = draft.data.findIndex((t) => t._id === techId);
+                if (index !== -1) {
+                  draft.data.splice(index, 1);
+                  if (draft.count !== undefined) draft.count = Math.max(0, draft.count - 1);
+                  if (draft.totalCount !== undefined) draft.totalCount = Math.max(0, draft.totalCount - 1);
+                }
+              }
+            });
+          };
+
+          socket.on('technicianCreated', handleCreated);
+          socket.on('technicianUpdated', handleUpdated);
+          socket.on('technicianDeleted', handleDeleted);
+
+          await cacheEntryRemoved;
+          socket.off('technicianCreated', handleCreated);
+          socket.off('technicianUpdated', handleUpdated);
+          socket.off('technicianDeleted', handleDeleted);
+        } catch {}
+      },
     }),
     getTechnicianById: builder.query({
       query: (id) => `/technicians/${id}`,
       providesTags: (result, error, id) => [{ type: 'Technician', id }],
+      async onCacheEntryAdded(arg, { updateCachedData, cacheDataLoaded, cacheEntryRemoved }) {
+        try {
+          await cacheDataLoaded;
+          const handleUpdated = (technician) => {
+            if (technician._id === arg) {
+              updateCachedData((draft) => {
+                if (draft && draft.data) {
+                  Object.assign(draft.data, technician);
+                }
+              });
+            }
+          };
+
+          const handleDeleted = (techId) => {
+            if (techId === arg) {
+              updateCachedData((draft) => {
+                if (draft) {
+                  draft.data = null;
+                }
+              });
+            }
+          };
+
+          socket.on('technicianUpdated', handleUpdated);
+          socket.on('technicianDeleted', handleDeleted);
+          await cacheEntryRemoved;
+          socket.off('technicianUpdated', handleUpdated);
+          socket.off('technicianDeleted', handleDeleted);
+        } catch {}
+      },
     }),
     getOwnProfile: builder.query({
-      query: (userId) => '/technicians/profile',
-      providesTags: (result, error, userId) => [{ type: 'Technician', id: userId || 'OWN' }],
+      query: () => '/technicians/profile',
+      providesTags: ['Technician'],
+      async onCacheEntryAdded(arg, { updateCachedData, cacheDataLoaded, cacheEntryRemoved }) {
+        try {
+          await cacheDataLoaded;
+          const handleProfileUpdated = (updatedProfile) => {
+            updateCachedData((draft) => {
+              if (draft && draft.data) {
+                Object.assign(draft.data, updatedProfile);
+              }
+            });
+          };
+
+          socket.on('technicianProfileUpdated', handleProfileUpdated);
+          await cacheEntryRemoved;
+          socket.off('technicianProfileUpdated', handleProfileUpdated);
+        } catch {}
+      },
     }),
     updateTechnicianAvailability: builder.mutation({
       query: (isAvailable) => ({

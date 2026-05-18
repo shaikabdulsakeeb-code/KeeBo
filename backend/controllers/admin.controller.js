@@ -187,10 +187,34 @@ exports.deleteTechnician = asyncHandler(async (req, res, next) => {
     return next(new Error('Technician not found'));
   }
 
-  // Also update user role back to 'user' or just delete user? 
-  // User says "remove technician", usually we delete the profile but keep the user?
-  // Let's delete the profile.
+  const userId = technician.userId;
+  const techId = technician._id;
+
+  // Delete the profile
   await technician.deleteOne();
+
+  // Delete the user account too since they are terminated/deleted from organisation
+  if (userId) {
+    await User.findByIdAndDelete(userId);
+  }
+
+  // Surgically clean up this technician from all users' favorites in the database
+  await User.updateMany(
+    { favorites: techId },
+    { $pull: { favorites: techId } }
+  );
+
+  const io = req.app.get('io');
+  if (io) {
+    // 1. Notify the logged-in technician that their account was deleted
+    if (userId) {
+      io.to(userId.toString()).emit('accountDeleted', {
+        message: 'Your account has been permanently deleted from the organisation'
+      });
+    }
+    // 2. Broadcast to all users to remove the technician from search and favorites
+    io.emit('technicianDeleted', techId.toString());
+  }
 
   res.status(200).json({
     success: true,
@@ -242,6 +266,24 @@ exports.verifyTechnician = asyncHandler(async (req, res, next) => {
   }
 
   await technician.save();
+
+  const io = req.app.get('io');
+  if (io) {
+    const populatedProfile = await Technician.findById(technician._id).populate('userId', 'name email');
+    const Settlement = require('../models/Settlement');
+    const lastSettlementObj = await Settlement.findOne({ technician: populatedProfile._id }).sort('-createdAt');
+    const profileObj = populatedProfile.toObject();
+    profileObj.lastSettlement = lastSettlementObj || null;
+
+    if (technician.userId) {
+      io.to(technician.userId.toString()).emit('technicianProfileUpdated', profileObj);
+    }
+    // Sanitize the profile for public broadcast to protect private ID document URLs
+    const sanitizedProfile = { ...profileObj };
+    delete sanitizedProfile.idVerification;
+    
+    io.emit('technicianUpdated', sanitizedProfile);
+  }
 
   res.status(200).json({
     success: true,
@@ -317,7 +359,33 @@ exports.deleteUser = asyncHandler(async (req, res, next) => {
     return next(new Error('User not found'));
   }
 
+  const userId = user._id;
+
+  // Check if they have a technician profile and delete it too
+  const technician = await Technician.findOne({ userId });
+  if (technician) {
+    await technician.deleteOne();
+    
+    // Surgically clean up this technician from all users' favorites in the database
+    await User.updateMany(
+      { favorites: technician._id },
+      { $pull: { favorites: technician._id } }
+    );
+  }
+
   await user.deleteOne();
+
+  const io = req.app.get('io');
+  if (io) {
+    // 1. Notify the logged-in user that their account was deleted
+    io.to(userId.toString()).emit('accountDeleted', {
+      message: 'Your account has been permanently deleted from the organisation'
+    });
+    // 2. If they were a technician, notify all users to remove them
+    if (technician) {
+      io.emit('technicianDeleted', technician._id.toString());
+    }
+  }
 
   res.status(200).json({
     success: true,
@@ -394,9 +462,61 @@ exports.updateAdminBookingStatus = asyncHandler(async (req, res, next) => {
   
   await booking.save();
 
+  const populatedBooking = await Booking.findById(booking._id)
+    .populate('user', 'name email profileImage')
+    .populate({
+      path: 'technician',
+      populate: { path: 'userId', select: 'name email profileImage' }
+    });
+
+  // Emit Real-Time Events
+  const io = req.app.get('io');
+  if (io && populatedBooking) {
+    const bookingObj = populatedBooking.toJSON();
+    bookingObj.oldStatus = oldStatus;
+
+    // Notify the user who made the booking
+    io.to(booking.user.toString()).emit('bookingUpdated', bookingObj);
+    
+    // Notify the technician
+    const Technician = require('../models/Technician');
+    const tech = await Technician.findById(booking.technician);
+    if (tech) {
+      io.to(tech.userId.toString()).emit('bookingUpdated', bookingObj);
+    }
+    
+    // Notify admins
+    io.to('admin_room').emit('bookingUpdated', bookingObj);
+  }
+
+  if (status === 'completed') {
+    try {
+      const Technician = require('../models/Technician');
+      const populatedProfile = await Technician.findById(booking.technician).populate('userId', 'name email');
+      if (populatedProfile) {
+        const Settlement = require('../models/Settlement');
+        const lastSettlementObj = await Settlement.findOne({ technician: populatedProfile._id }).sort('-createdAt');
+        const profileObj = populatedProfile.toObject();
+        profileObj.lastSettlement = lastSettlementObj || null;
+
+        const sanitizedProfile = { ...profileObj };
+        delete sanitizedProfile.idVerification;
+        
+        if (io) {
+          io.emit('technicianUpdated', sanitizedProfile);
+          if (populatedProfile.userId) {
+            io.to(populatedProfile.userId._id.toString()).emit('technicianProfileUpdated', profileObj);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error broadcasting technician updates on booking completion:', err);
+    }
+  }
+
   res.status(200).json({
     success: true,
-    data: booking
+    data: populatedBooking
   });
 });
 
@@ -411,7 +531,14 @@ exports.deleteBooking = asyncHandler(async (req, res, next) => {
     return next(new Error('Booking not found'));
   }
 
+  const bookingId = booking._id.toString();
+
   await booking.deleteOne();
+
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('bookingDeleted', bookingId);
+  }
 
   res.status(200).json({
     success: true,
@@ -531,6 +658,38 @@ exports.verifySettlement = asyncHandler(async (req, res, next) => {
     await technician.save();
   }
 
+  const io = req.app.get('io');
+  if (io) {
+    const populatedSettlement = await settlement.populate([
+      { path: 'user', select: 'name email' },
+      {
+        path: 'technician',
+        populate: { path: 'userId', select: 'name email' }
+      }
+    ]);
+    
+    // Broadcast updated settlement to admin
+    io.emit('settlementUpdated', populatedSettlement);
+
+    // Notify technician to update their dues/suspension status and broadcast updated profile
+    if (technician && technician.userId) {
+      const populatedProfile = await Technician.findById(technician._id).populate('userId', 'name email');
+      if (populatedProfile) {
+        const lastSettlementObj = await Settlement.findOne({ technician: technician._id }).sort('-createdAt');
+        const profileObj = populatedProfile.toObject();
+        profileObj.lastSettlement = lastSettlementObj || null;
+
+        // Notify the technician themselves
+        io.to(technician.userId.toString()).emit('technicianProfileUpdated', profileObj);
+
+        // Also broadcast globally to keep everyone in sync
+        const sanitizedProfile = { ...profileObj };
+        delete sanitizedProfile.idVerification;
+        io.emit('technicianUpdated', sanitizedProfile);
+      }
+    }
+  }
+
   res.status(200).json({
     success: true,
     message: `Payment request has been ${status} successfully!`,
@@ -558,6 +717,25 @@ exports.toggleSuspendTechnician = asyncHandler(async (req, res, next) => {
   }
   
   await technician.save();
+
+  const io = req.app.get('io');
+  if (io && technician.userId) {
+    const populatedProfile = await Technician.findById(technician._id).populate('userId', 'name email');
+    if (populatedProfile) {
+      const Settlement = require('../models/Settlement');
+      const lastSettlementObj = await Settlement.findOne({ technician: populatedProfile._id }).sort('-createdAt');
+      const profileObj = populatedProfile.toObject();
+      profileObj.lastSettlement = lastSettlementObj || null;
+
+      // Notify the technician themselves
+      io.to(technician.userId.toString()).emit('technicianProfileUpdated', profileObj);
+
+      // Broadcast globally to keep everyone synced
+      const sanitizedProfile = { ...profileObj };
+      delete sanitizedProfile.idVerification;
+      io.emit('technicianUpdated', sanitizedProfile);
+    }
+  }
 
   res.status(200).json({
     success: true,

@@ -117,7 +117,24 @@ const TechnicianProfile = () => {
   };
 
   if (isTechLoading) return <div className="min-h-screen flex items-center justify-center italic text-muted-foreground text-xl">Loading professional profile...</div>;
-  if (!tech) return <div className="min-h-screen flex items-center justify-center font-black text-2xl">Professional not found.</div>;
+  if (!tech || tech.isSuspended) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-card border border-border/50 max-w-md p-10 rounded-[2.5rem] shadow-2xl flex flex-col items-center">
+          <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mb-6">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-black mb-2 text-foreground">Technician Unavailable</h2>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-8">
+            This technician is currently unavailable. Please find another technician.
+          </p>
+          <Button onClick={() => navigate('/technicians')} className="font-black px-8 py-3 rounded-2xl shadow-xl shadow-primary/20">
+            Browse Professionals
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-32 pt-0">

@@ -16,7 +16,7 @@ import { Button } from '../../../components/ui/Button';
 const TechnicianDashboard = () => {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
-  const { data: profileData, isLoading: isProfileLoading, refetch: refetchProfile } = useGetOwnProfileQuery(user?._id, {
+  const { data: profileData, isLoading: isProfileLoading, refetch: refetchProfile } = useGetOwnProfileQuery(undefined, {
     refetchOnMountOrArgChange: true
   });
   const { data: bookingsData, isLoading } = useGetBookingsQuery();

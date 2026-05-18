@@ -85,7 +85,6 @@ const TechnicianLayout = () => {
     ? [
         { label: 'Overview', icon: <LayoutDashboard className="w-5 h-5" />, path: '/technician', end: true },
         { label: 'My Bookings', icon: <Calendar className="w-5 h-5" />, path: '/technician/bookings' },
-        { label: 'Messages', icon: <MessageSquare className="w-5 h-5" />, path: '/technician/chat' },
         { label: 'My Reviews', icon: <Star className="w-5 h-5" />, path: '/technician/reviews' },
         { label: 'Profile Settings', icon: <UserCircle className="w-5 h-5" />, path: '/technician/profile-management' },
         { label: 'Logout', icon: <LogOut className="w-5 h-5" />, path: '#', action: handleLogout },

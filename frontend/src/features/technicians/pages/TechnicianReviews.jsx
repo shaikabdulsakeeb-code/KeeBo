@@ -6,7 +6,7 @@ import { Star, MessageSquare, TrendingUp, Filter } from 'lucide-react';
 
 const TechnicianReviews = () => {
   const user = useSelector(selectCurrentUser);
-  const { data: profileData } = useGetOwnProfileQuery(user?._id);
+  const { data: profileData } = useGetOwnProfileQuery();
   const profile = profileData?.data;
   
   const { data: reviewsData, isLoading } = useGetTechnicianReviewsQuery(profile?._id, { 

@@ -105,7 +105,7 @@ const AdminTechnicianDetail = () => {
                     <Award className="w-4 h-4 mr-1.5" /> {tech.experience} Yrs Exp
                   </div>
                   <div className="flex items-center text-slate-400 font-bold text-xs sm:text-sm">
-                    <MapPin className="w-4 h-4 mr-1.5 text-slate-400" /> {tech.address}
+                    <MapPin className="w-4 h-4 mr-1.5 text-slate-400" /> {tech.location?.address || 'Address not provided'}
                   </div>
                 </div>
               </div>

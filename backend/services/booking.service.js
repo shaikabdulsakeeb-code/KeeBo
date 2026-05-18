@@ -42,6 +42,14 @@ exports.createBooking = async (bookingData) => {
     throw new Error('Technician not found');
   }
 
+  if (technician.isSuspended) {
+    throw new Error('This professional is currently suspended and cannot receive new bookings.');
+  }
+
+  if (technician.isApproved !== 'approved') {
+    throw new Error('This professional is not currently approved and cannot receive new bookings.');
+  }
+
   // 2. Enforce Max Active Bookings per Technician
   const activeBookingsCount = await Booking.countDocuments({
     technician: bookingData.technician,

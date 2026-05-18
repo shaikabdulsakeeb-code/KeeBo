@@ -28,25 +28,69 @@ const startServer = async () => {
   // Make 'io' accessible in routes/controllers
   app.set('io', io);
 
+  const getOnlineCounts = () => {
+    const uniqueUsers = new Set();
+    const uniqueTechnicians = new Set();
+
+    const sockets = io.of("/").sockets;
+    for (const [id, s] of sockets) {
+      if (s.userRole === 'admin') {
+        continue;
+      }
+
+      if (s.userRole === 'technician') {
+        uniqueTechnicians.add(s.userId || id);
+      } else {
+        uniqueUsers.add(s.userId || id);
+      }
+    }
+
+    return {
+      users: uniqueUsers.size,
+      technicians: uniqueTechnicians.size
+    };
+  };
+
+  const broadcastOnlineStats = () => {
+    io.to('admin_room').emit('onlineStats', getOnlineCounts());
+  };
+
   io.on('connection', (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     // Users & Technicians join their personal room
-    socket.on('join', (userId) => {
+    socket.on('join', (data) => {
+      let userId;
+      let role = 'user';
+
+      if (data && typeof data === 'object') {
+        userId = data.userId;
+        role = data.role || 'user';
+      } else {
+        userId = data;
+      }
+
       if (userId) {
         socket.join(userId);
-        console.log(`User ${userId} joined their personal room`);
+        socket.userId = userId;
+        socket.userRole = role;
+        console.log(`User ${userId} (${role}) joined their personal room`);
+        broadcastOnlineStats();
       }
     });
 
     // Admins join a global admin room
     socket.on('joinAdmin', () => {
       socket.join('admin_room');
+      socket.userId = 'admin';
+      socket.userRole = 'admin';
       console.log(`Socket ${socket.id} joined admin_room`);
+      socket.emit('onlineStats', getOnlineCounts());
     });
 
     socket.on('disconnect', () => {
       console.log(`Socket disconnected: ${socket.id}`);
+      broadcastOnlineStats();
     });
   });
 
@@ -64,3 +108,4 @@ const startServer = async () => {
 };
 
 startServer();
+// Touch for nodemon reload - clean boot after hardening and updates

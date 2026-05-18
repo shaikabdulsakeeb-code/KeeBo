@@ -38,12 +38,26 @@ export const bookingApi = baseApi.injectEndpoints({
             });
           };
 
+          const handleDeleted = (bookingId) => {
+            updateCachedData((draft) => {
+              if (draft && draft.data) {
+                const index = draft.data.findIndex((b) => b._id === bookingId);
+                if (index !== -1) {
+                  draft.data.splice(index, 1);
+                  draft.count = Math.max(0, (draft.count || 1) - 1);
+                }
+              }
+            });
+          };
+
           socket.on('newBooking', handleCreated);
           socket.on('bookingUpdated', handleUpdated);
+          socket.on('bookingDeleted', handleDeleted);
 
           await cacheEntryRemoved;
           socket.off('newBooking', handleCreated);
           socket.off('bookingUpdated', handleUpdated);
+          socket.off('bookingDeleted', handleDeleted);
         } catch {}
       },
     }),

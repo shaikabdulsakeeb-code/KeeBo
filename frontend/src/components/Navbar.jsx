@@ -24,7 +24,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
 
-  const { data: profileData } = useGetOwnProfileQuery(user?._id, { 
+  const { data: profileData } = useGetOwnProfileQuery(undefined, { 
     skip: !isAuthenticated || user?.role !== 'technician' 
   });
   const [updateProfileImage, { isLoading: isUpdatingImage }] = useUpdateProfileImageMutation();

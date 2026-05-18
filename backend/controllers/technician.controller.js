@@ -103,6 +103,16 @@ const createProfile = async (req, res, next) => {
       isApproved: settings.autoApproveTechnicians ? 'approved' : 'pending'
     });
 
+    const populatedProfile = await Technician.findById(profile._id).populate('userId', 'name email');
+    const io = req.app.get('io');
+    if (io) {
+      // Sanitize the profile for public broadcast to protect private ID document URLs
+      const sanitizedProfile = populatedProfile.toObject();
+      delete sanitizedProfile.idVerification;
+      
+      io.emit('technicianCreated', sanitizedProfile);
+    }
+
     res.status(201).json({
       success: true,
       data: profile,
@@ -255,6 +265,16 @@ const updateProfile = async (req, res, next) => {
     }
 
     await profile.save();
+
+    const populatedProfile = await Technician.findById(profile._id).populate('userId', 'name email');
+    const io = req.app.get('io');
+    if (io) {
+      // Sanitize the profile for public broadcast to protect private ID document URLs
+      const sanitizedProfile = populatedProfile.toObject();
+      delete sanitizedProfile.idVerification;
+      
+      io.emit('technicianUpdated', sanitizedProfile);
+    }
 
     res.status(200).json({
       success: true,
@@ -428,7 +448,7 @@ const payDues = async (req, res, next) => {
     }
 
     // Create a pending settlement request
-    await Settlement.create({
+    const settlement = await Settlement.create({
       technician: technician._id,
       user: req.user._id,
       amount: technician.outstandingDues,
@@ -440,6 +460,35 @@ const payDues = async (req, res, next) => {
     // Mark as pending admin verification
     technician.isSettlementPending = true;
     await technician.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      const populatedSettlement = await settlement.populate([
+        { path: 'user', select: 'name email' },
+        {
+          path: 'technician',
+          populate: { path: 'userId', select: 'name email' }
+        }
+      ]);
+      
+      // Notify all admins that a new settlement is submitted
+      io.emit('settlementCreated', populatedSettlement);
+
+      // Notify the technician themselves to update their UI with lastSettlement and populated user info
+      const populatedProfile = await Technician.findById(technician._id).populate('userId', 'name email');
+      if (populatedProfile) {
+        const profileObj = populatedProfile.toObject();
+        profileObj.lastSettlement = settlement || null;
+
+        // Notify the technician themselves
+        io.to(req.user._id.toString()).emit('technicianProfileUpdated', profileObj);
+
+        // Also broadcast updated technician profile globally to keep the admin's technician lists in sync
+        const sanitizedProfile = { ...profileObj };
+        delete sanitizedProfile.idVerification;
+        io.emit('technicianUpdated', sanitizedProfile);
+      }
+    }
 
     res.status(200).json({
       success: true,

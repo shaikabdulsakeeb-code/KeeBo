@@ -14,8 +14,9 @@ import {
   useSuspendTechnicianMutation
 } from '../api/adminApi';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { socket } from '../../../lib/socket';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -56,6 +57,28 @@ const AdminDashboard = () => {
   const [decision, setDecision] = useState('approve_full'); // 'approve_full', 'approve_partial', 'reject'
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
   const [remainingDuesInput, setRemainingDuesInput] = useState('');
+
+  // Live online counts tracked via Socket.io
+  const [onlineCounts, setOnlineCounts] = useState({ users: 0, technicians: 0 });
+
+  useEffect(() => {
+    const handleOnlineStats = (data) => {
+      if (data) {
+        setOnlineCounts(data);
+      }
+    };
+
+    socket.on('onlineStats', handleOnlineStats);
+
+    // If socket is connected, request immediate update
+    if (socket.connected) {
+      socket.emit('joinAdmin');
+    }
+
+    return () => {
+      socket.off('onlineStats', handleOnlineStats);
+    };
+  }, []);
 
   const calculateDaysUnpaid = (lastPaymentDate, createdAt) => {
     const lastPay = lastPaymentDate || createdAt || new Date();
@@ -293,6 +316,45 @@ const AdminDashboard = () => {
           )}
         </div>
       </header>
+
+      {/* Live System Activity Banner */}
+      <div className="bg-gradient-to-r from-emerald-500/5 via-teal-500/5 to-transparent border border-emerald-500/10 rounded-[1.5rem] p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
+        <div className="flex items-center space-x-3">
+          <div className="relative flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+          </div>
+          <div>
+            <span className="text-xs font-black text-emerald-800 tracking-wider uppercase block">Live Connection Room</span>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Socket-level active listener count</p>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-6">
+          {/* Customers Online Card */}
+          <div className="bg-white border rounded-xl px-4 py-2 flex items-center space-x-3 shadow-sm min-w-[140px]">
+            <div className="p-1.5 bg-cyan-50 rounded-lg">
+              <Users className="w-4 h-4 text-cyan-600" />
+            </div>
+            <div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Online Users</span>
+              <span className="text-base font-black text-slate-800 leading-none mt-0.5 block">{onlineCounts.users}</span>
+            </div>
+          </div>
+
+          {/* Technicians Online Card */}
+          <div className="bg-white border rounded-xl px-4 py-2 flex items-center space-x-3 shadow-sm min-w-[140px]">
+            <div className="p-1.5 bg-indigo-50 rounded-lg">
+              <Briefcase className="w-4 h-4 text-indigo-600" />
+            </div>
+            <div>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Online Technicians</span>
+              <span className="text-base font-black text-slate-800 leading-none mt-0.5 block">{onlineCounts.technicians}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {!hasTabParam ? (
         <>

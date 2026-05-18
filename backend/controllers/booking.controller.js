@@ -84,6 +84,7 @@ exports.updateStatus = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse('Booking not found', 404));
   }
 
+  const oldStatus = booking.status;
   booking.status = status;
   if (status === 'cancelled') {
     booking.cancelledBy = req.user.role === 'admin' ? 'admin' : (req.user.role === 'technician' ? 'technician' : 'user');
@@ -92,10 +93,31 @@ exports.updateStatus = asyncHandler(async (req, res, next) => {
 
   await booking.save();
 
-  // If status is completed, increment jobs done
+  // If status is completed, broadcast updated technician profile globally to keep the admin defaulters list in sync
   if (status === 'completed') {
-     const Technician = require('../models/Technician');
-     await Technician.findByIdAndUpdate(booking.technician, { $inc: { jobsDone: 1 } });
+    try {
+      const Technician = require('../models/Technician');
+      const populatedProfile = await Technician.findById(booking.technician).populate('userId', 'name email');
+      if (populatedProfile) {
+        const Settlement = require('../models/Settlement');
+        const lastSettlementObj = await Settlement.findOne({ technician: populatedProfile._id }).sort('-createdAt');
+        const profileObj = populatedProfile.toObject();
+        profileObj.lastSettlement = lastSettlementObj || null;
+
+        const sanitizedProfile = { ...profileObj };
+        delete sanitizedProfile.idVerification;
+        
+        const io = req.app.get('io');
+        if (io) {
+          io.emit('technicianUpdated', sanitizedProfile);
+          if (populatedProfile.userId) {
+            io.to(populatedProfile.userId._id.toString()).emit('technicianProfileUpdated', profileObj);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error broadcasting technician updates on booking completion:', err);
+    }
   }
 
   const populatedBooking = await Booking.findById(bookingId)
@@ -108,18 +130,21 @@ exports.updateStatus = asyncHandler(async (req, res, next) => {
   // Emit Real-Time Events
   const io = req.app.get('io');
   if (io && populatedBooking) {
+    const bookingObj = populatedBooking.toJSON();
+    bookingObj.oldStatus = oldStatus;
+
     // Notify the user who made the booking
-    io.to(booking.user.toString()).emit('bookingUpdated', populatedBooking.toJSON());
+    io.to(booking.user.toString()).emit('bookingUpdated', bookingObj);
     
     // Notify the technician
     const Technician = require('../models/Technician');
     const tech = await Technician.findById(booking.technician);
     if (tech) {
-      io.to(tech.userId.toString()).emit('bookingUpdated', populatedBooking.toJSON());
+      io.to(tech.userId.toString()).emit('bookingUpdated', bookingObj);
     }
     
     // Notify admins
-    io.to('admin_room').emit('bookingUpdated', populatedBooking.toJSON());
+    io.to('admin_room').emit('bookingUpdated', bookingObj);
   }
 
   res.status(200).json({
