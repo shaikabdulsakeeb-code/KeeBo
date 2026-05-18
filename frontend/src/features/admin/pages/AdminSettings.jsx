@@ -5,7 +5,7 @@ import {
   useUpdateAdminSettingsMutation 
 } from '../api/adminApi';
 import { 
-  Percent, DollarSign, ShieldAlert, Sliders, MapPin, 
+  Percent, DollarSign, ShieldAlert, MapPin, 
   Mail, Phone, Save, RefreshCw, AlertTriangle, CheckCircle, 
   HelpCircle, ToggleLeft, ToggleRight, Loader2, Info
 } from 'lucide-react';
@@ -152,7 +152,6 @@ const AdminSettings = () => {
     { id: 'financial', label: 'Financials & Fees', icon: <DollarSign className="w-4 h-4" /> },
     { id: 'policy', label: 'Verification & Policy', icon: <ShieldAlert className="w-4 h-4" /> },
     { id: 'operations', label: 'Availability & Support', icon: <MapPin className="w-4 h-4" /> },
-    { id: 'system', label: 'System Operations', icon: <Sliders className="w-4 h-4" /> },
   ];
 
   return (
@@ -465,32 +464,7 @@ const AdminSettings = () => {
                 </motion.div>
               )}
 
-              {activeTab === 'system' && (
-                <motion.div
-                  key="system"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-6"
-                >
-                  <div className="border-b pb-4 mb-6">
-                    <h3 className="text-lg font-black text-slate-800 flex items-center">
-                      <Sliders className="w-5 h-5 text-red-500 mr-2" />
-                      Critical System Operations
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1">Manage global system auditing parameters.</p>
-                  </div>
 
-                  <div className="p-6 border border-blue-100 bg-blue-50/30 rounded-[1.5rem] flex items-start space-x-3">
-                    <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-black text-sm text-slate-800">System Auditing Logs</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">Platform configurations are versioned. All settings updates are automatically logged with timestamps for security auditing.</p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
             </AnimatePresence>
 
             <div className="border-t border-slate-100 mt-10 pt-6 flex justify-end space-x-3">
